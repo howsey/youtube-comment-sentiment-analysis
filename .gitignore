@@ -1,0 +1,26 @@
+# Output folder
+output/
+
+# Log file
+scraper.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Model cache (Hugging Face)
+.cache/
+models/
+
+# Environment
+.env
+*.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
