@@ -4,11 +4,17 @@ Scraper komentar YouTube yang dilengkapi dengan analisis sentimen menggunakan AI
 
 ## Fitur
 
-- Mengambil komentar langsung tanpa membuka browser
+- Mengambil komentar langsung tanpa membuka browser (tanpa Selenium)
 - Mendukung URL standar YouTube, Shorts, dan Embed
+- Scraping replies/komentar balasan (opsional)
+- Filter minimum likes
 - Analisis sentimen otomatis menggunakan model AI (Bahasa Indonesia)
 - Deteksi GPU/CUDA untuk pemrosesan yang lebih cepat
-- Hasil disimpan dalam format CSV
+- Export ke CSV dan/atau JSON
+- Output filename timestamped otomatis atau custom
+- Retry mechanism untuk error handling
+- Logging ke file `scraper.log`
+- Sentiment summary dengan visualisasi bar chart
 
 ## Persiapan
 
@@ -28,22 +34,52 @@ pip install torch transformers yt_comment_dl
 
 ## Cara Penggunaan
 
-1. Jalankan script:
+### Mode Interaktif
+
 ```bash
 python scraper.py
 ```
 
-2. Masukkan URL video YouTube saat diminta
+User akan diminta input secara interaktif:
+- URL YouTube
+- Jumlah maksimal komentar (default: 100)
+- Sort mode (1 = Terbaru, 2 = Terpopuler)
+- Minimum likes
+- Sertakan replies (y/n)
+- Export JSON (y/n)
 
-3. Tentukan jumlah komentar yang ingin diambil (default: 100)
+### Mode CLI
 
-4. Pilih metode sorting:
-   - **1** = Terbaru
-   - **2** = Terpopuler
+```bash
+python scraper.py <URL> [options]
+```
 
-5. Tunggu proses selesai
+#### Opsi
 
-6. Hasil tersimpan di folder `output/youtube_comments_labeled.csv`
+| Flag | Keterangan | Default |
+|------|------------|---------|
+| `url` | URL video YouTube (posisi argumen) | - |
+| `-n, --max` | Jumlah maksimal komentar | 100 |
+| `-s, --sort` | Sort mode: `new` atau `popular` | new |
+| `--min-likes` | Filter minimum likes | 0 |
+| `--replies` | Sertakan replies | false |
+| `--csv` | Export ke CSV | true |
+| `--json` | Export ke JSON | false |
+| `-o, --output` | Custom output filename (tanpa ekstensi) | auto timestamp |
+| `-v, --verbose` | Debug logging | false |
+
+#### Contoh
+
+```bash
+# Ambil 200 komentar terbaru, export CSV + JSON
+python scraper.py "https://youtube.com/watch?v=xxx" -n 200 --json
+
+# Ambil komentar terpopuler dengan min 10 likes dan replies
+python scraper.py "https://youtube.com/watch?v=xxx" -s popular --min-likes 10 --replies
+
+# Custom output filename
+python scraper.py "https://youtube.com/watch?v=xxx" -o hasil_analisis
+```
 
 ## Format Output
 
@@ -51,12 +87,13 @@ python scraper.py
 |-------|------------|
 | platform | Sumber komentar (youtube) |
 | comment_id | ID unik komentar |
+| parent_id | ID komentar induk (hanya untuk replies) |
 | author | Nama pembuat komentar |
 | comment | Isi komentar |
 | likes | Jumlah like |
 | timestamp | Waktu komentar dibuat |
 | video_url | URL video asli |
-| scraped_at | Waktu data diambil |
+| scraped_at | Waktu data diambil (ISO format) |
 | label | Hasil analisis sentimen (positive/negative/neutral) |
 | confidence | Skor kepercayaan model (0-1) |
 
@@ -64,7 +101,24 @@ python scraper.py
 
 ```
 platform,comment_id,author,comment,likes,timestamp,video_url,scraped_at,label,confidence
-youtube,abc123,John,Video ini sangat bagus!,5,2 hours ago,https://...,2026-09-19,positive,0.9523
+youtube,abc123,John,Video ini sangat bagus!,5,2 hours ago,https://...,2026-09-19T10:30:00,positive,0.9523
+```
+
+## Sentiment Summary
+
+Setelah proses selesai, tool menampilkan ringkasan sentimen dalam format visual:
+
+```
+=======================================================
+                 SENTIMENT SUMMARY
+=======================================================
+Positive : ██████████░░░░░░░░░░░░░░░░░░░░  33% (33)
+Negative : ████████████████░░░░░░░░░░░░░░  50% (50)
+Neutral  : ████░░░░░░░░░░░░░░░░░░░░░░░░░░  16% (16)
+=======================================================
+Total    : 100 komentar
+Avg Conf : 0.8742
+=======================================================
 ```
 
 ## Catatan
@@ -72,3 +126,6 @@ youtube,abc123,John,Video ini sangat bagus!,5,2 hours ago,https://...,2026-09-19
 - Model AI yang digunakan: `sahri/indonesiasentiment` (khusus Bahasa Indonesia)
 - Proses sentiment analysis akan lebih cepat jika menggunakan GPU
 - Komentar kosong akan otomatis di-skip
+- Duplikat komentar akan di-skip berdasarkan comment ID
+- Error handling dengan retry mechanism (maksimal 3 percobaan)
+- Log disimpan di `scraper.log`
